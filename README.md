@@ -15,6 +15,8 @@ stuff from this project and it is going to be fun.
 - Cookies Encryption 
 - Other Icons
 - Icons embedded in .exe and not outside the .exe
+- No CMD Window
+All todos here that are fixed will have a checkmark beside them.
 # License
 Copyright 2023 xyqn
 
