@@ -14,6 +14,7 @@ stuff from this project and it is going to be fun.
 - Good Icons and UI
 - Cookies Encryption 
 - Other Icons
+- Icons embedded in .exe and not outside the .exe
 # License
 Copyright 2023 xyqn
 
