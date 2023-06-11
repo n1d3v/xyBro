@@ -9,6 +9,11 @@ pip install PyQt5 PyQtWebEngine
 PyQtWebEngine is the backend of the browser and handles HTML, CSS, JS etc. 
 PyQt5 is the UI backend of the browser. I am going to learn a bunch of 
 stuff from this project and it is going to be fun.
+# Todo
+- Working Downloads
+- Good Icons and UI
+- Cookies Encryption 
+- Other Icons
 # License
 Copyright 2023 xyqn
 
