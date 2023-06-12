@@ -1,6 +1,6 @@
 # xyBro - the shitty pyqt5 browser
 ![banner](https://github.com/xyqnn/xyBro/assets/135556230/ae53d648-0f3a-46dd-8aac-5af185af5cc2)
-xyBro is a browser based on PyQt5 and PyQtWebBrowser.
+xyBro is a browser based on PyQt5 and PyQtWebEngine.
 This is a fun project I am making (credits to @BaamBuus for this idea, check him out)
 Want to build or run this? Install these dependencies using pip.
 ```python
