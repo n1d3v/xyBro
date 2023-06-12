@@ -17,8 +17,8 @@ the py file. Can't say it will work for you but give it a go.
 ✅ = Finished
 ☑️ = Some what finished
 ❌ = Not finished / implemented
-- Working Downloads ☑️
-- Good Icons and UI ✅
+- Working Downloads ☑️ (No Download Manager and some issues (mentioned in release.))
+- Good Icons and UI ☑️ (Buggy UI but mostly finished.)
 - Cookies Encryption ☑️ (Cookies Work but no encryption.)
 - Other Icons ✅
 - Icons embedded in .exe and not outside the .exe ❌
