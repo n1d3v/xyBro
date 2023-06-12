@@ -6,15 +6,15 @@ Want to use the .py file? Install these dependencies first.
 ```python
 python3 -m pip install pyqt5 pyqtwebengine
 ```
-For Windows do
+To install the dependencies on Windows do
 ```python
 py -m pip install pyqt5 pyqtwebengine
 ```
-Once done in the directory of xybro.py do
+For Unix based operating systems do 
 ```python
 python3 xybro.py
 ```
-For Windows do
+To launch on Windows do
 ```python
 py xybro.py
 ```
