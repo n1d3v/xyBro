@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtCore import Qt, QUrl, QSize
+from PyQt5.QtCore import Qt, QUrl, QSize, QRectF
 from PyQt5.QtGui import QIcon, QPixmap, QPainterPath, QColor, QPalette, QPainter
 from PyQt5.QtWidgets import (
     QApplication,
@@ -17,21 +17,19 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
-    QMenu,
-)
-from PyQt5.QtWebEngineWidgets import (
-    QWebEngineView,
-    QWebEngineProfile,
-    QWebEngineDownloadItem,
 )
 
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineDownloadItem, QWebEnginePage
 
-class ButtonWithShadow(QPushButton):
-    def __init__(self, icon_path):
+
+class SquarcicleButton(QPushButton):
+    def __init__(self, light_icon_path, dark_icon_path):
         super().__init__()
         self.setFixedSize(32, 32)
-        self.setStyleSheet("border-radius: 16px;")
-        self.setIcon(QIcon(icon_path))
+        self.setStyleSheet("border-radius: 8px;")
+        self.light_icon_path = light_icon_path
+        self.dark_icon_path = dark_icon_path
+        self.setIcon(QIcon(light_icon_path))
         self.setIconSize(QSize(24, 24))
         self.setGraphicsEffect(QGraphicsDropShadowEffect(self))
         self.shadow = QGraphicsDropShadowEffect(self)
@@ -50,6 +48,23 @@ class ButtonWithShadow(QPushButton):
         self.setGraphicsEffect(self.shadow)
         super().leaveEvent(event)
 
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        path = QPainterPath()
+        rect = QRectF(self.rect())
+        path.addRoundedRect(rect, 8.0, 8.0)
+
+        painter.setClipPath(path)
+        super().paintEvent(event)
+
+    def set_dark_mode(self, dark_mode):
+        if dark_mode:
+            self.setIcon(QIcon(self.dark_icon_path))
+        else:
+            self.setIcon(QIcon(self.light_icon_path))
+
 
 class BrowserWindow(QMainWindow):
     def __init__(self):
@@ -57,7 +72,7 @@ class BrowserWindow(QMainWindow):
 
         # Window setup
         self.setWindowTitle("xyBro")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1280, 720)
 
         # Create main layout
         layout = QVBoxLayout()
@@ -69,9 +84,9 @@ class BrowserWindow(QMainWindow):
         title_bar.setLayout(title_layout)
 
         # Create title label
-        title_label = QLabel("xyBro")
-        title_label.setStyleSheet("font-size: 20px; padding: 5px;")
-        title_layout.addWidget(title_label)
+        self.title_label = QLabel("xyBro")
+        self.title_label.setStyleSheet("font-size: 20px; padding: 5px; color: #F8F8F2;")
+        title_layout.addWidget(self.title_label)
 
         # Create toolbar
         toolbar = QWidget()
@@ -79,236 +94,265 @@ class BrowserWindow(QMainWindow):
         toolbar.setLayout(toolbar_layout)
 
         # Create buttons
-        back_button = ButtonWithShadow("icons/back.png")
+        back_button = SquarcicleButton("icons/light/back.png", "icons/dark/back.png")
         back_button.clicked.connect(self.back)
         toolbar_layout.addWidget(back_button)
 
-        forward_button = ButtonWithShadow("icons/forward.png")
+        forward_button = SquarcicleButton("icons/light/forward.png", "icons/dark/forward.png")
         forward_button.clicked.connect(self.forward)
         toolbar_layout.addWidget(forward_button)
 
-        refresh_button = ButtonWithShadow("icons/refresh.png")
+        refresh_button = SquarcicleButton("icons/light/refresh.png", "icons/dark/refresh.png")
         refresh_button.clicked.connect(self.refresh)
         toolbar_layout.addWidget(refresh_button)
 
-        new_tab_button = ButtonWithShadow("icons/new_tab.png")
+        self.dark_mode_button = SquarcicleButton("icons/light/theme.png", "icons/dark/theme.png")
+        self.dark_mode_button.clicked.connect(self.toggle_dark_mode)
+        toolbar_layout.addWidget(self.dark_mode_button)
+
+        download_button = SquarcicleButton("icons/light/download.png", "icons/dark/download.png")
+        download_button.clicked.connect(self.start_download)
+        toolbar_layout.addWidget(download_button)
+
+        new_tab_button = SquarcicleButton("icons/light/new_tab.png", "icons/dark/new_tab.png")
         new_tab_button.clicked.connect(self.create_new_tab)
         toolbar_layout.addWidget(new_tab_button)
 
-        download_button = ButtonWithShadow("icons/download.png")
-        download_button.clicked.connect(self.download_manager)
-        toolbar_layout.addWidget(download_button)
+        title_layout.addWidget(toolbar)
 
         # Create URL bar
         self.url_bar = QLineEdit()
         self.url_bar.setPlaceholderText("Enter URL or search query...")
-        self.url_bar.setStyleSheet("border: none;")
+        self.url_bar.setStyleSheet("border: none; border-radius: 8px; padding: 4px;")
         self.url_bar.returnPressed.connect(self.load_url)
-        toolbar_layout.addWidget(self.url_bar)
-
-        title_layout.addWidget(toolbar)
+        title_layout.addWidget(self.url_bar)
 
         # Create tab widget
         self.tab_widget = QTabWidget()
-        self.tab_widget.setDocumentMode(True)
-        self.tab_widget.tabBar().setStyleSheet("border: none;")
+        self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self.close_tab)
+
+        # Add initial tab
+        self.create_new_tab()
+
+        # Add title bar and tab widget to main layout
         layout.addWidget(title_bar)
         layout.addWidget(self.tab_widget)
 
-        # Create initial tab
-        self.create_new_tab()
-
-        # Set layout to central widget
+        # Create central widget and set layout
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        # Download manager window
-        self.download_manager_window = DownloadManagerWindow()
+        # Set dark mode by default
+        self.dark_mode = True
+        self.set_dark_mode()
 
-        # Create a profile for handling downloads
-        self.download_profile = QWebEngineProfile.defaultProfile()
-        self.download_profile.downloadRequested.connect(self.handle_download)
+    def toggle_dark_mode(self):
+        self.dark_mode = not self.dark_mode
+        self.set_dark_mode()
 
-    def load_url(self):
-        url_bar = self.sender()
-        current_index = self.tab_widget.currentIndex()
-        web_view = self.tab_widget.widget(current_index)
-        text = url_bar.text().strip()
-
-        # Check if the input is a URL
-        if not text.startswith("http://") and not text.startswith("https://"):
-            # Treat as a Google search query
-            url = f"https://www.google.com/search?q={text}"
+    def set_dark_mode(self):
+        if self.dark_mode:
+            self.setStyleSheet(
+                """
+                QMainWindow {
+                    background-color: #252526;
+                    color: #F8F8F2;
+                }
+                QTabWidget::pane {
+                    border-top: 1px solid #808080;
+                }
+                QTabWidget::tab-bar {
+                    alignment: left;
+                }
+                QTabBar::tab {
+                    background-color: #252526;
+                    color: #F8F8F2;
+                    padding: 8px 12px;
+                }
+                QTabBar::tab:selected {
+                    background-color: #3E3E40;
+                }
+                QTabBar::tab:hover {
+                    background-color: #3E3E40;
+                }
+                QTabBar::tab:!selected {
+                    margin-top: 2px;
+                }
+                QLineEdit {
+                    background-color: #373737;
+                    color: #F8F8F2;
+                    border: none;
+                    padding: 4px;
+                }
+                QPushButton {
+                    background-color: #373737;
+                    color: #F8F8F2;
+                    border: none;
+                    padding: 0;
+                }
+                QPushButton:hover {
+                    background-color: #3E3E40;
+                }
+                QPushButton:pressed {
+                    background-color: #454545;
+                }
+                """
+            )
         else:
-            url = text
+            self.setStyleSheet("")
 
-        web_view.load(QUrl(url))
+        # Update icons in the toolbar
+        for button in self.findChildren(SquarcicleButton):
+            button.set_dark_mode(self.dark_mode)
+
+        # Update title label color
+        self.set_dark_mode_title()
+
+    def set_dark_mode_title(self):
+        if self.dark_mode:
+            self.title_label.setStyleSheet("font-size: 20px; padding: 5px; color: #F8F8F2;")
+        else:
+            self.title_label.setStyleSheet("font-size: 20px; padding: 5px; color: #000000;")
 
     def create_new_tab(self):
+        # Create web view
         web_view = QWebEngineView()
-        web_view.load(QUrl("https://www.google.com"))
-        web_view.titleChanged.connect(self.update_tab_title)
-        web_view.urlChanged.connect(self.update_url_bar)
-        web_view.contextMenuEvent = self.context_menu_event
-        self.tab_widget.addTab(web_view, "New Tab")
-        current_index = self.tab_widget.indexOf(web_view)
-        self.tab_widget.setCurrentIndex(current_index)
+        web_view.page().profile().downloadRequested.connect(self.handle_download_request)
+        web_view.page().setBackgroundColor(Qt.transparent)
 
-    def update_tab_title(self, title):
-        current_index = self.tab_widget.currentIndex()
-        self.tab_widget.setTabText(current_index, title)
+        # Create progress bar
+        progress_bar = QProgressBar()
+        progress_bar.setTextVisible(False)
+        progress_bar.setMaximumHeight(2)
+        progress_bar.setStyleSheet("QProgressBar { background-color: transparent; } QProgressBar::chunk { background-color: #64B5F6; }")
 
-    def update_url_bar(self, url):
-        current_index = self.tab_widget.currentIndex()
-        web_view = self.tab_widget.widget(current_index)
-        self.url_bar.setText(url.toString())
+        # Create tab layout
+        tab_layout = QVBoxLayout()
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.addWidget(web_view)
+        tab_layout.addWidget(progress_bar)
+
+        # Create tab widget
+        tab_widget = QWidget()
+        tab_widget.setLayout(tab_layout)
+
+        # Add tab widget to tab widget
+        index = self.tab_widget.addTab(tab_widget, "")
+        self.tab_widget.setCurrentIndex(index)
+
+        # Set tab as current tab
+        self.tab_widget.setCurrentWidget(tab_widget)
+
+        # Set tab title
+        self.set_tab_title(index, "New Tab")
+
+        # Load homepage
+        self.load_homepage(index)
+
+        # Connect web view signals
+        web_view.urlChanged.connect(lambda url: self.update_url_bar(url, index))
+        web_view.titleChanged.connect(lambda title: self.set_tab_title(index, title))
+        web_view.loadProgress.connect(progress_bar.setValue)
 
     def close_tab(self, index):
-        if index != -1:
-            self.tab_widget.removeTab(index)
+        if self.tab_widget.count() == 1:
+            # Don't allow closing the last tab
+            return
+
+        # Remove tab and delete its web view
+        widget = self.tab_widget.widget(index)
+        widget.deleteLater()
+        self.tab_widget.removeTab(index)
+
+    def load_url(self):
+        url = self.url_bar.text()
+        self.load_url_in_current_tab(url)
+
+    def load_url_in_current_tab(self, url):
+        current_index = self.tab_widget.currentIndex()
+        web_view = self.tab_widget.widget(current_index).layout().itemAt(0).widget()
+        web_view.load(QUrl(url))
+
+    def load_homepage(self, index):
+        # Load your homepage URL here
+        homepage_url = "https://www.google.com"
+        web_view = self.tab_widget.widget(index).layout().itemAt(0).widget()
+        web_view.load(QUrl(homepage_url))
 
     def back(self):
         current_index = self.tab_widget.currentIndex()
-        web_view = self.tab_widget.widget(current_index)
+        web_view = self.tab_widget.widget(current_index).layout().itemAt(0).widget()
         web_view.back()
 
     def forward(self):
         current_index = self.tab_widget.currentIndex()
-        web_view = self.tab_widget.widget(current_index)
+        web_view = self.tab_widget.widget(current_index).layout().itemAt(0).widget()
         web_view.forward()
 
     def refresh(self):
         current_index = self.tab_widget.currentIndex()
-        web_view = self.tab_widget.widget(current_index)
+        web_view = self.tab_widget.widget(current_index).layout().itemAt(0).widget()
         web_view.reload()
 
-    def handle_download(self, download_item):
-        download_item.finished.connect(self.download_finished)
-        download_item.downloadProgress.connect(self.update_download_progress)
-        self.download_manager_window.add_download(download_item)
+    def update_url_bar(self, url, index):
+        if index == self.tab_widget.currentIndex():
+            self.url_bar.setText(url.toString())
 
-    def download_finished(self):
-        download_item = self.sender()
-        if download_item.state() == QWebEngineDownloadItem.DownloadCompleted:
-            QMessageBox.information(
-                self,
-                "Download Completed",
-                f"{download_item.fileName()} has been downloaded successfully.",
-            )
+    def set_tab_title(self, index, title):
+        if index == self.tab_widget.currentIndex():
+            self.setWindowTitle(title)
 
-    def update_download_progress(self, bytes_received, bytes_total):
-        download_item = self.sender()
-        if download_item.state() == QWebEngineDownloadItem.DownloadInProgress:
-            self.download_manager_window.update_download_progress(
-                download_item, bytes_received, bytes_total
-            )
+        if title == "":
+            title = "New Tab"
 
-    def download_manager(self):
-        self.download_manager_window.show()
+        self.tab_widget.setTabText(index, title)
 
-    def context_menu_event(self, event):
-        web_view = self.sender()
-        menu = QMenu(self)
+    def start_download(self):
+        current_index = self.tab_widget.currentIndex()
+        web_view = self.tab_widget.widget(current_index).layout().itemAt(0).widget()
+        url = web_view.url().toString()
 
-        save_image_action = menu.addAction("Save Image")
-        save_image_action.triggered.connect(lambda: self.save_image(web_view, event))
+        if url:
+            # Show save file dialog
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "All Files (*);;Text Files (*.txt)", options=options)
 
-        menu.exec_(event.globalPos())
+            if file_path:
+                # Start download
+                web_view.page().profile().downloadRequested.disconnect(self.handle_download_request)
+                download_item = web_view.page().profile().downloadRequested.connect(lambda download: self.handle_download(download, file_path))
+                web_view.page().profile().download(download_item, url)
 
-    def save_image(self, web_view, event):
-        if web_view.page() is None:
-            return
+    def handle_download_request(self, download):
+        # Show save file dialog
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "All Files (*);;Text Files (*.txt)", options=options)
 
-        hit_test_result = web_view.page().hitTestContent(event.pos())
-        if hit_test_result.isContentSelected():
-            # Save the selected content as an image
-            image_url = hit_test_result.imageUrl()
-            file_dialog = QFileDialog(self)
-            file_dialog.setAcceptMode(QFileDialog.AcceptSave)
-            file_dialog.setFileMode(QFileDialog.AnyFile)
-            file_dialog.setDefaultSuffix("png")
-            if file_dialog.exec_():
-                file_path = file_dialog.selectedFiles()[0]
-                download_item = web_view.page().profile().downloadImage(image_url)
-                download_item.finished.connect(lambda: self.save_selected_image(download_item, file_path))
-        else:
-            # Save the entire page as an image
-            file_dialog = QFileDialog(self)
-            file_dialog.setAcceptMode(QFileDialog.AcceptSave)
-            file_dialog.setFileMode(QFileDialog.AnyFile)
-            file_dialog.setDefaultSuffix("png")
-            if file_dialog.exec_():
-                file_path = file_dialog.selectedFiles()[0]
-                web_view.grab().save(file_path)
+        if file_path:
+            # Start download
+            download.finished.connect(lambda: self.download_finished(download))
+            download.setPath(file_path)
+            download.accept()
 
-    def save_selected_image(self, download_item, file_path):
-        if download_item.state() == QWebEngineDownloadItem.DownloadCompleted:
-            file_extension = QFileInfo(file_path).suffix()
-            if file_extension == "":
-                file_extension = "png"
-                file_path += ".png"
-            download_item.downloadProgress.connect(lambda bytes_received, bytes_total: self.update_save_progress(download_item, bytes_received, bytes_total, file_path))
-            download_item.save(file_path, file_extension)
+    def handle_download(self, download, file_path):
+        download.finished.connect(lambda: self.download_finished(download))
+        download.setPath(file_path)
 
-    def update_save_progress(self, download_item, bytes_received, bytes_total, file_path):
-        if download_item.state() == QWebEngineDownloadItem.DownloadInProgress:
-            progress = bytes_received * 100 / bytes_total
-            self.download_manager_window.update_save_progress(download_item, progress, file_path)
+    def download_finished(self, download):
+        QMessageBox.information(self, "Download Complete", f"File {download.path()} has been downloaded successfully!")
 
-
-class DownloadManagerWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        # Window setup
-        self.setWindowTitle("Download Manager")
-        self.setGeometry(100, 100, 600, 400)
-
-        # Create main layout
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create list widget
-        self.download_list = QListWidget()
-        layout.addWidget(self.download_list)
-
-        # Set layout to central widget
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
-
-    def add_download(self, download_item):
-        item = QListWidgetItem(download_item.fileName())
-        item.setData(Qt.UserRole, download_item)
-        self.download_list.addItem(item)
-
-    def update_download_progress(self, download_item, bytes_received, bytes_total):
-        for row in range(self.download_list.count()):
-            item = self.download_list.item(row)
-            if item.data(Qt.UserRole) == download_item:
-                progress = bytes_received * 100 / bytes_total
-                item.setText(f"{download_item.fileName()} - {progress:.2f}%")
-
-    def update_save_progress(self, download_item, progress, file_path):
-        for row in range(self.download_list.count()):
-            item = self.download_list.item(row)
-            if item.data(Qt.UserRole) == download_item:
-                item.setText(f"{download_item.fileName()} - {progress:.2f}% - Saving...")
-
-                if progress == 100:
-                    QMessageBox.information(
-                        self,
-                        "Save Completed",
-                        f"{download_item.fileName()} has been saved to {file_path} successfully.",
-                    )
-                    self.download_list.takeItem(row)
-                    break
-
-
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+            
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    browser = BrowserWindow()
-    browser.show()
+
+    window = BrowserWindow()
+    window.show()
+
     sys.exit(app.exec_())
