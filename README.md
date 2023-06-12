@@ -2,9 +2,21 @@
 ![banner](https://github.com/xyqnn/xyBro/assets/135556230/ae53d648-0f3a-46dd-8aac-5af185af5cc2)
 xyBro is a browser based on PyQt5 and PyQtWebEngine.
 This is a fun project I am making (credits to @BaamBuus for this idea, check him out)
-Want to build or run this? Install these dependencies using pip.
+Want to use the .py file? Install these dependencies first. 
 ```python
-pip install PyQt5 PyQtWebEngine
+python3 -m pip install pyqt5 pyqtwebengine
+```
+For Windows do
+```python
+py -m pip install pyqt5 pyqtwebengine
+```
+Once done in the directory of xybro.py do
+```python
+python3 xybro.py
+```
+For Windows do
+```python
+py xybro.py
 ```
 # How?
 PyQtWebEngine is the backend of the browser and handles HTML, CSS, JS etc. 
